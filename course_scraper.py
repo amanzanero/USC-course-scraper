@@ -1,12 +1,12 @@
 from bs4 import BeautifulSoup
-import urllib.request, urllib.error
+import urllib.request
+import urllib.error
 from datetime import datetime
 import csv
+import json
 
 
 def main():
-
-
     # load page
     term_input = input("What term would you like to search for?\n"
                        "Please choose from the following:\n"
@@ -14,8 +14,18 @@ def main():
                        "B) Summer\n"
                        "C) Fall\n"
                        "Enter letter here >> ")
+    while term_input.lower() not in ['a', 'b', 'c']:
+        term_input = input("Enter letter here >> ")
 
-    url_id, csv_fname = term_for_url(term_input)  # retrieve ID from user
+    jsonOrCsv = input("\nJson or csv?\n1) Json\n2) CSV\n>> ")
+    while int(jsonOrCsv) != 1 and int(jsonOrCsv) != 2:
+        jsonOrCsv = input("1) Json\n2) CSV\n>> ")
+
+    url_id, fName = term_for_url(term_input)  # retrieve ID from user
+    if jsonOrCsv:
+        fName += '.json'
+    else:
+        fName += '.csv'
 
     # error handling
     if url_id:
@@ -41,6 +51,9 @@ def main():
 
     school_urls = get_school_tags(soup)
 
+    # dictionary to be json
+    jsonDict = {}
+
     for key in school_urls.keys():
         print_string = "Retrieving classes from: %s" % key
         print(print_string)
@@ -50,11 +63,23 @@ def main():
         class_list = print_class_info(school_urls[key])
 
         for item in class_list:
-            csv_list.append(item)
+            if not jsonOrCsv:
+                csv_list.append(item)
+            else:
+                if key in jsonDict:
+                    jsonDict[key].append(item)
+                else:
+                    jsonDict[key] = [item]
 
-        open_file = save_as_csv(csv_list, csv_fname)
+        if not jsonOrCsv:
+            open_file = save_as_csv(csv_list, fName)
 
-    open_file.close()
+    if not jsonOrCsv:
+        open_file.close()
+    else:
+        with open(fName, 'w') as resFile:
+            json.dump(jsonDict, resFile)
+        resFile.close()
 
 
 def term_for_url(term_input):
@@ -64,22 +89,17 @@ def term_for_url(term_input):
     """
     url_id = None
 
-    # error handler
-    if type(term_input) is not str:
-        print("PLEASE ENTER A LETTER")
-        return url_id
-
     term_input = term_input.lower()
     term_number = None
     term_string = None
 
-    if term_input == "a":
+    if term_input.lower() == "a":
         term_number = 1
         term_string = "spring"
-    elif term_input == "b":
+    elif term_input.lower() == "b":
         term_number = 2
         term_string = "summer"
-    elif term_input == "c":
+    elif term_input.lower() == "c":
         term_number = 3
         term_string = "fall"
 
@@ -88,10 +108,10 @@ def term_for_url(term_input):
         url_id = str(year) + str(term_number)
 
     if term_string:
-        csv_fname = datetime.today().strftime('%Y-%m-%d') + "_term-"
-        csv_fname += term_string
-        csv_fname += "_USC_classes.csv"
-    return url_id, csv_fname
+        fName = datetime.today().strftime('%Y-%m-%d') + "_term-"
+        fName += term_string
+        fName += "_USC_classes."
+    return url_id, fName
 
 
 def get_school_tags(soup):
@@ -113,7 +133,7 @@ def get_school_tags(soup):
 def print_class_info(url):
     """ Print our class information
     input: url with specific USC school
-    output: dictionary with school info
+    output: list with school info
     """
     page = urllib.request.urlopen(url)
     soup = BeautifulSoup(page.read(), "html.parser")

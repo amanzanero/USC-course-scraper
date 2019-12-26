@@ -8,25 +8,11 @@ import re
 
 
 def main():
+
+    # get user info
+    term_input, year_input, jsonOrCsv, customClasses = userInfo()
+
     # load page
-    term_input = input("What term would you like to search for?\n"
-                       "Please choose from the following:\n"
-                       "1) Spring\n"
-                       "2) Summer\n"
-                       "3) Fall\n"
-                       ">> ")
-    while term_input.lower() not in ['1', '2', '3']:
-        term_input = input(">> ")
-
-    year_input = input("\nWhat year would you like?\n>> ")
-    while not re.match(r'^\d{4}$', year_input):
-        year_input = input("What year would you like?\n>> ")
-
-    jsonOrCsv = input("\nJson or csv?\n1) Json\n2) CSV\n>> ")
-    while not jsonOrCsv.isdigit() and int(jsonOrCsv) != 1 and int(jsonOrCsv) != 2:
-        jsonOrCsv = input("1) Json\n2) CSV\n>> ")
-    jsonOrCsv = int(jsonOrCsv)
-
     fName = filename_generator(term_input, year_input)  # retrieve ID from user
     url_id = "{}{}".format(year_input, term_input)
 
@@ -61,8 +47,13 @@ def main():
 
     # dictionary to be json
     jsonDict = {}
-    count = 1
-    for key in school_urls.keys():
+
+    iterable = customClasses if len(customClasses) > 0 else school_urls.keys()
+
+    for key in iterable:
+        if key not in school_urls:
+            print("{} is not a valid department code. Continuing...".format(key))
+            continue
         print_string = "Retrieving classes from: %s" % key
         print(print_string)
 
@@ -75,9 +66,6 @@ def main():
         else:
             course_details_dict = get_course_details(school_urls[key])
             jsonDict[key] = course_details_dict
-        count += 1
-        if count == 3:
-            break
 
     open_file = None
     if jsonOrCsv == 1:
@@ -169,7 +157,7 @@ def get_course_details(url):
         class_name = tag.attrs['id']
         course_details_dict = dict()
         course_details = tag.h3.a.text.strip().split(": ")
-        course_id = course_details[0].split(" ")
+        course_id = tag.h3.a.strong.text.split(":")[0].split(" ")
 
         course_details_dict["dept"] = course_id[0]
         course_details_dict["code"] = course_id[1]
@@ -195,6 +183,40 @@ def save_as_json(jsonDict, json_file):
     with open(json_file, 'w') as resFile:
         json.dump(jsonDict, resFile, indent=2)
     return resFile
+
+
+def userInfo():
+    term_input = input("What term would you like to search for?\n"
+                       "Please choose from the following:\n"
+                       "1) Spring\n"
+                       "2) Summer\n"
+                       "3) Fall\n"
+                       ">> ")
+    while term_input.lower() not in ['1', '2', '3']:
+        term_input = input(">> ")
+
+    year_input = input("What year would you like? (YYYY) >> ")
+    while not re.match(r'^\d{4}$', year_input):
+        year_input = input("(YYYY) >> ")
+
+    jsonOrCsv = input("JSON or CSV? (1) JSON (2) CSV >> ")
+    while not jsonOrCsv.isdigit() and int(jsonOrCsv) != 1 and int(jsonOrCsv) != 2:
+        jsonOrCsv = input("(1/2) >> ")
+    jsonOrCsv = int(jsonOrCsv)
+
+    customClasses = []
+    get_classes = input(
+        "Would you like to enter a list of courses? Default is all courses. (y/n) >> ")
+    while get_classes.lower() not in ["y", "n"]:
+        get_classes = input("(y/n) >> ")
+
+    if get_classes == "y":
+        classes = input(
+            "Enter a comma separated list of department codes (i.e. MATH, AME)\n>> ")
+        classes = classes.split(",")
+        customClasses = [item.strip().upper() for item in classes]
+
+    return term_input, year_input, jsonOrCsv, customClasses
 
 
 if __name__ == '__main__':

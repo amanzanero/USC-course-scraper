@@ -4,48 +4,56 @@ import urllib.error
 from datetime import datetime
 import csv
 import json
+import re
 
 
 def main():
     # load page
     term_input = input("What term would you like to search for?\n"
                        "Please choose from the following:\n"
-                       "A) Spring\n"
-                       "B) Summer\n"
-                       "C) Fall\n"
-                       "Enter letter here >> ")
-    while term_input.lower() not in ['a', 'b', 'c']:
-        term_input = input("Enter letter here >> ")
+                       "1) Spring\n"
+                       "2) Summer\n"
+                       "3) Fall\n"
+                       ">> ")
+    while term_input.lower() not in ['1', '2', '3']:
+        term_input = input(">> ")
+
+    year_input = input("\nWhat year would you like?\n>> ")
+    while not re.match(r'^\d{4}$', year_input):
+        year_input = input("What year would you like?\n>> ")
 
     jsonOrCsv = input("\nJson or csv?\n1) Json\n2) CSV\n>> ")
-    while int(jsonOrCsv) != 1 and int(jsonOrCsv) != 2:
+    while not jsonOrCsv.isdigit() and int(jsonOrCsv) != 1 and int(jsonOrCsv) != 2:
         jsonOrCsv = input("1) Json\n2) CSV\n>> ")
+    jsonOrCsv = int(jsonOrCsv)
 
-    url_id, fName = term_for_url(term_input)  # retrieve ID from user
-    if jsonOrCsv:
+    fName = filename_generator(term_input, year_input)  # retrieve ID from user
+    url_id = "{}{}".format(year_input, term_input)
+
+    if jsonOrCsv == 1:
         fName += '.json'
     else:
         fName += '.csv'
 
     # error handling
-    if url_id:
-        url = "https://classes.usc.edu/term-%s/classes/" % url_id
-    else:
-        print("\nINVALID INPUT. PLEASE TRY AGAIN\n")
-        return
+    url = "https://classes.usc.edu/term-%s/classes/" % url_id
 
     # retrieve url and grab html for parsing
 
     try:
         page = urllib.request.urlopen(url)
 
-    except urllib.error.HTTPError as err:
-        if err.code == 404:
-            print("404 Not found. Term is no longer available")
-            return
-        else:
-            raise
-            return
+    except urllib.error.HTTPError as _:
+        try:
+            url = "https://web-app.usc.edu/ws/soc_archive/soc/term-%s/" % url_id
+            page = urllib.request.urlopen(url)
+        except urllib.error.HTTPError as err:
+            if err.code == 404:
+                print("404 Not found. Term is no longer available")
+                return
+            else:
+                raise
+                return
 
     soup = BeautifulSoup(page.read(), "html.parser")
 
@@ -53,65 +61,51 @@ def main():
 
     # dictionary to be json
     jsonDict = {}
-
+    count = 1
     for key in school_urls.keys():
         print_string = "Retrieving classes from: %s" % key
         print(print_string)
 
         csv_list = []
 
-        class_list = print_class_info(school_urls[key])
-
-        for item in class_list:
-            if not jsonOrCsv:
+        if jsonOrCsv == 2:
+            class_list = print_class_info(school_urls[key])
+            for item in class_list:
                 csv_list.append(item)
-            else:
-                if key in jsonDict:
-                    jsonDict[key].append(item)
-                else:
-                    jsonDict[key] = [item]
+        else:
+            course_details_dict = get_course_details(school_urls[key])
+            jsonDict[key] = course_details_dict
+        count += 1
+        if count == 3:
+            break
 
-        if not jsonOrCsv:
-            open_file = save_as_csv(csv_list, fName)
-
-    if not jsonOrCsv:
-        open_file.close()
+    open_file = None
+    if jsonOrCsv == 1:
+        open_file = save_as_json(jsonDict, fName)
     else:
-        with open(fName, 'w') as resFile:
-            json.dump(jsonDict, resFile)
-        resFile.close()
+        open_file = save_as_csv(csv_list, fName)
+    open_file.close()
 
 
-def term_for_url(term_input):
+def filename_generator(term_input, year_input):
     """ This creates the term id for the url
     input: string representing term
     output: string representing the url id
     """
-    url_id = None
-
     term_input = term_input.lower()
-    term_number = None
     term_string = None
 
-    if term_input.lower() == "a":
-        term_number = 1
+    if term_input.lower() == "1":
         term_string = "spring"
-    elif term_input.lower() == "b":
-        term_number = 2
+    elif term_input.lower() == "2":
         term_string = "summer"
-    elif term_input.lower() == "c":
-        term_number = 3
+    elif term_input.lower() == "3":
         term_string = "fall"
 
-    if term_number:
-        year = datetime.today().year
-        url_id = str(year) + str(term_number)
-
-    if term_string:
-        fName = datetime.today().strftime('%Y-%m-%d') + "_term-"
-        fName += term_string
-        fName += "_USC_classes."
-    return url_id, fName
+    fName = datetime.today().strftime('%Y-%m-%d') + "_term-"
+    fName += "{}-{}".format(term_string, year_input)
+    fName += "_USC_classes"
+    return fName
 
 
 def get_school_tags(soup):
@@ -125,7 +119,7 @@ def get_school_tags(soup):
 
     for tag in class_list:
         href = tag.find('a').attrs['href']
-        school_url_dict[tag.attrs['data-code'].lower()] = href
+        school_url_dict[tag.attrs['data-code'].upper()] = href
 
     return school_url_dict
 
@@ -135,7 +129,10 @@ def print_class_info(url):
     input: url with specific USC school
     output: list with school info
     """
-    page = urllib.request.urlopen(url)
+    try:
+        page = urllib.request.urlopen(url)
+    except ValueError as _:
+        page = urllib.request.urlopen("https://web-app.usc.edu/{}".format(url))
     soup = BeautifulSoup(page.read(), "html.parser")
 
     # get all of the classes
@@ -151,6 +148,37 @@ def print_class_info(url):
     return return_list
 
 
+def get_course_details(url):
+    """
+    input: url to department course page
+    output: dictionary where keys are course id's and values
+      are dictionaries of details
+    """
+    try:
+        page = urllib.request.urlopen(url)
+    except ValueError as _:
+        page = urllib.request.urlopen(
+            "https://web-app.usc.edu/{}".format(url))
+    soup = BeautifulSoup(page.read(), "html.parser")
+
+    # get all of the classes
+    class_titles = soup.find_all("div", class_="course-info expandable")
+
+    return_list = []
+    for tag in class_titles:
+        class_name = tag.attrs['id']
+        course_details_dict = dict()
+        course_details = tag.h3.a.text.strip().split(": ")
+        course_id = course_details[0].split(" ")
+
+        course_details_dict["dept"] = course_id[0]
+        course_details_dict["code"] = course_id[1]
+        course_details_dict["title"] = course_details[1]
+        return_list.append(course_details_dict)
+
+    return return_list
+
+
 def save_as_csv(class_list, csv_file):
     """ Print our class information
     input: save the list of classes as a csv
@@ -161,6 +189,12 @@ def save_as_csv(class_list, csv_file):
         wr.writerow(class_list)
 
     return f
+
+
+def save_as_json(jsonDict, json_file):
+    with open(json_file, 'w') as resFile:
+        json.dump(jsonDict, resFile, indent=2)
+    return resFile
 
 
 if __name__ == '__main__':

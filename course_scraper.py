@@ -74,6 +74,8 @@ def main():
         open_file = save_as_csv(csv_list, fName)
     open_file.close()
 
+    print('\nScraping success. Goodbye!')
+
 
 def filename_generator(term_input, year_input):
     """ This creates the term id for the url

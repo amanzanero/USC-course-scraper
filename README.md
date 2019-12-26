@@ -34,7 +34,7 @@ Please choose from the following:
 2) Summer
 3) Fall
 >> 1
-What year would you like? (YYYY) >> *2020*
+What year would you like? (YYYY) >> 2020
 JSON or CSV? (1) JSON (2) CSV >> 1
 Would you like to enter a list of courses? Default is all courses. (y/n) >> y
 Enter a comma separated list of department codes (i.e. MATH, AME)

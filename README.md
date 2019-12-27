@@ -41,7 +41,7 @@ Enter a comma separated list of department codes (i.e. MATH, AME)
 Retrieving classes from: MATH
 Retrieving classes from: PHYS
 
-
+Scraping success. Goodbye!
 ```
 
 Example JSON output:
@@ -54,10 +54,10 @@ Example JSON output:
     {
       "dept": "MATH",
       "code": "101",
-      "title": "Basic Mathematics"
-      "prerequisite(s)?": "MATH 100"
-      "corequisite(s)?": "MATH 102"
-      "description": "Review of Algebra. Real numbers, linear equations and inequalities, functions, graphs, systems of equations, exponents, polynomials, factoring, rational expressions, radicals, quadratic equations and solutions."
+      "title": "Basic Mathematics",
+      "prerequisite(s)?": "MATH 100",
+      "corequisite(s)?": "MATH 102",
+      "description": "Review of Algebra. Real numbers, linear equations and inequalities, functions, graphs, systems of equations, exponents, polynomials, factoring, rational expressions, radicals, quadratic equations and solutions.",
       "units": "4
     }
   ]

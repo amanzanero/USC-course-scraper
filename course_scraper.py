@@ -81,7 +81,7 @@ def filename_generator(term_input: str, year_input: str) -> str:
 
     fName = datetime.today().strftime('%Y-%m-%d') + "_term-"
     fName += "{}-{}".format(term_string, year_input)
-    fName += "_USC_classes"
+    fName += "_USC_classes.json"
     return fName
 
 
@@ -122,12 +122,17 @@ def get_course_details(url: str) -> dict:
     for tag in class_titles:
         details = dict()
 
-        # parse course header for title, units, and id
-        course_heading = tag.h3.a.text
-        title_units = course_heading.strip().split(": ")[1]
-        title = title_units.split("(")[0].strip()
-        units = title_units.split("(")[1].split(".")[0]
-        course_id = course_heading.split(":")[0].split(" ")
+        # parse course id
+        course_id = tag.attrs['id'].split('-')
+
+        # parse title
+        title = tag.h3.a.text
+        title = title.strip().split(": ")[1:]
+        title = ": ".join(title)
+        title = title.split("(")[0].strip()
+
+        # parse units
+        units = tag.find("span", class_="units").text.strip("()")
 
         # get description
         description = tag.find("div", class_="catalogue").text

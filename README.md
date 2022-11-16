@@ -58,7 +58,7 @@ Example JSON output:
       "prerequisite(s)?": "MATH 100",
       "corequisite(s)?": "MATH 102",
       "description": "Review of Algebra. Real numbers, linear equations and inequalities, functions, graphs, systems of equations, exponents, polynomials, factoring, rational expressions, radicals, quadratic equations and solutions.",
-      "units": "4
+      "units": "4"
     }
   ]
 }
